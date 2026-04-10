@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Task Manager</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        .task-list {
+            list-style: none;
+            padding: 0;
+        }
+        .task-item {
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        .completed {
+            text-decoration: line-through;
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Task Manager</h1>
+
+    <button onclick="newTask()">Add New Task</button>
+
+    <ul id="task-list" class="task-list">
+        <!-- Tasks will be displayed here -->
+    </ul>
+
+    <script>
+        let taskIdCounter = 0;
+
+        async function newTask() {
+            const title = prompt("Enter task title:");
+            const description = prompt("Enter task description:");
+
+            if (title && description) {
+                const response = await fetch('/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ title: title, description: description })
+                });
+
+                if (response.ok) {
+                    const newTask = await response.json();
+                    displayTask(newTask);
+                    taskIdCounter++;
+                } else {
+                    alert("Failed to create task.");
+                }
+            }
+        }
+
+        async function displayTask(task) {
+            const taskList = document.getElementById('task-list');
+            const taskItem = document.createElement('li');
+            taskItem.classList.add('task-item');
+
+            if (task.completed) {
+                taskItem.classList.add('completed');
+            }
+
+            taskItem.innerHTML = `
+                <span>${task.title}</span>
+                <p>${task.description}</p>
+                <button onclick="completeTask(${task.id})">Complete</button>
+                <button onclick="deleteTask(${task.id})">Delete</button>
+            `;
+
+            taskList.appendChild(taskItem);
+        }
+
+        async function completeTask(taskId) {
+            const response = await fetch(`/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: true })
+            });
+
+            if (response.ok) {
+                const updatedTask = await response.json();
+                displayTask(updatedTask);
+            } else {
+                alert("Failed to complete task.");
+            }
+        }
+
+        async function deleteTask(taskId) {
+            const response = await fetch(`/tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                displayTasks();
+            } else {
+                alert("Failed to delete task.");
+            }
+        }
+
+        async function displayTasks() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = ''; // Clear existing tasks
+
+            const response = await fetch('/tasks');
+
+            if (response.ok) {
+                const tasks = await response.json();
+                tasks.forEach(task => {
+                    displayTask(task);
+                });
+            } else {
+                alert("Failed to load tasks.");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', displayTasks);
+    </script>
+</body>
+</html>
